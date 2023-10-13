@@ -1,0 +1,28 @@
+{
+  "name": "@tencent/cdn-to-eo",
+  "version": "1.1.0",
+  "description": "cdn config copy to eo",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "demo": "node demo/cdn.js"
+  },
+  "keywords": [
+    "cdn",
+    "edgeone",
+    "eo",
+    "tencent",
+    "tencent cloud"
+  ],
+  "author": "brandonwei",
+  "license": "ISC",
+  "engines": {
+    "node": ">= 6"
+  },
+  "dependencies": {
+    "chalk": "^4.1.0",
+    "lodash": "^4.17.21",
+    "objects-to-csv": "^1.3.6",
+    "tencentcloud-sdk-nodejs": "^4.0.681"
+  }
+}

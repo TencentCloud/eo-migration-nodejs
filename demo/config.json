@@ -1,0 +1,14 @@
+{
+  "SecretId": "xxx",
+  "SecretKey": "xxx",
+  "List": [
+    {
+      "ResourceIds": [
+        "cdn-6lelzmtm",
+        "cdn-qo23xb86"
+      ],
+      "ZoneId": "zone-29jdhcbg1mea"
+    }
+  ],
+  "NeedCreateDomain": true
+}
