@@ -24,6 +24,7 @@ $ npm -v
 ### 2.下载本仓库包
 可以通过 git clone 下载，或直接下载压缩包后解压
 ### 3.安装依赖
+进入本工程文件目录 /eo-migration-nodejs，执行指令
 ``` 
 $ npm install
 ```
