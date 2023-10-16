@@ -3,7 +3,8 @@
   "SecretKey": "xxx",
   "List": [
     {
-      "ResourceIds": [
+      "Domains": [
+        "xxx",
         "xxx",
         "xxx"
       ],

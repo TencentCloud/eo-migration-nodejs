@@ -1,11 +1,11 @@
 {
-  "name": "@tencent/cdn-to-eo",
-  "version": "1.1.0",
-  "description": "cdn config copy to eo",
+  "name": "tencentcloud-edgeone-migration-nodejs",
+  "version": "0.0.4",
+  "description": "tencentcloud cdn config copy to edgeone",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "demo": "node test/cdn.js"
+    "task": "node task.js"
   },
   "keywords": [
     "cdn",

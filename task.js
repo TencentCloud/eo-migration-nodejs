@@ -1,4 +1,4 @@
-var CDN2EO = require('../index');
+var CDN2EO = require('./index');
 var config = require('./config.json');
 
 var cdn2eo = new CDN2EO({

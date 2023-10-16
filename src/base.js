@@ -16,7 +16,7 @@ const httpsConfigs = ['ForceRedirect', 'Quic', 'Http2', 'OcspStapling', 'Hsts', 
  * 任务入参
  * @param  {Object}  options    
  *     @param  {Array}  options.DomainZoneMaps                          CDN域名跟EO站点的映射关系数组，必须
- *         @param  {Array}  options.DomainZoneMaps[i].ResourceIds       CDN域名唯一ID，可批量传入，要求跟站点匹配，必须
+ *         @param  {Array}  options.DomainZoneMaps[i].Domains       CDN域名，可批量传入，要求跟站点匹配，必须
  *         @param  {String}  options.DomainZoneMaps[i].ZoneId           EO站点唯一ID，必须
  *     @param  {Array}  options.Configs                                 指定要迁移的配置，默认值见readme说明，非必须
  *     @param  {Boolean}  options.NeedCreateDomain                      是否需要创建域名，不传默认true，传false的话，只迁移配置，不创建域名，非必须
@@ -42,12 +42,12 @@ async function runTasks(options) {
     }
     const tasks = [];
     domainMaps.forEach(map => {
-      if (!map.ResourceIds || !map.ResourceIds.length || map.ResourceIds.length === 0 || !map.ZoneId) {
+      if (!map.Domains || !map.Domains.length || map.Domains.length === 0 || !map.ZoneId) {
         return;
       }
-      map.ResourceIds.forEach(resourceId => {
+      map.Domains.forEach(domain => {
         tasks.push({
-          resourceId,
+          domain,
           zoneId: map.ZoneId,
         });
       });
@@ -62,12 +62,12 @@ async function runTasks(options) {
 
     for (task of tasks) {
       const report = {
-        ResourceId: task.resourceId,
+        Domain: task.domain,
         ZoneId: task.zoneId,
         Detail: ''
       };
-      logger.info(`开始任务，ResourceId: ${task.resourceId || null}, ZoneId: ${task.zoneId || null}`);
-      const res = await singleTask(self, task.resourceId, task.zoneId, needConfigsKeys, report, needCreateDomain);
+      logger.info(`开始任务，Domain: ${task.domain || null}, ZoneId: ${task.zoneId || null}`);
+      const res = await singleTask(self, task.domain, task.zoneId, needConfigsKeys, report, needCreateDomain);
 
       reportDatas.push(report);
     }
@@ -87,7 +87,7 @@ async function runTasks(options) {
  * 任务入参
  * @param  {Object}  options    
  *     @param  {Array}  options.DomainZoneMaps                          CDN域名跟EO站点的映射关系数组，必须
- *         @param  {Array}  options.DomainZoneMaps[i].ResourceIds       CDN域名唯一ID，可批量传入，要求跟站点匹配，必须
+ *         @param  {Array}  options.DomainZoneMaps[i].Domains       CDN域名唯一ID，可批量传入，要求跟站点匹配，必须
  *         @param  {String}  options.DomainZoneMaps[i].ZoneId           EO站点唯一ID，必须
  *     @param  {Array}  options.Configs                                 指定要迁移的配置，默认值见readme说明，非必须
  */
@@ -111,12 +111,12 @@ async function runScdnTasks(options) {
     }
     const tasks = [];
     domainMaps.forEach(map => {
-      if (!map.ResourceIds || !map.ResourceIds.length || map.ResourceIds.length === 0 || !map.ZoneId) {
+      if (!map.Domains || !map.Domains.length || map.Domains.length === 0 || !map.ZoneId) {
         return;
       }
-      map.ResourceIds.forEach(resourceId => {
+      map.Domains.forEach(domain => {
         tasks.push({
-          resourceId,
+          domain,
           zoneId: map.ZoneId,
         });
       });
@@ -131,12 +131,12 @@ async function runScdnTasks(options) {
 
     for (task of tasks) {
       const report = {
-        ResourceId: task.resourceId,
+        Domain: task.domain,
         ZoneId: task.zoneId,
         Detail: ''
       };
-      logger.info(`开始任务，ResourceId: ${task.resourceId || null}, ZoneId: ${task.zoneId || null}`);
-      const res = await singleScdnTask(self, task.resourceId, task.zoneId, needConfigsKeys, report);
+      logger.info(`开始任务，ResourceId: ${task.domain || null}, ZoneId: ${task.zoneId || null}`);
+      const res = await singleScdnTask(self, task.domain, task.zoneId, needConfigsKeys, report);
 
       reportDatas.push(report);
     }
@@ -152,9 +152,9 @@ async function runScdnTasks(options) {
   }
 }
 
-async function singleTask(self, resourceId, zoneId, needConfigsKeys, report, needCreateDomain) {
-  if (!resourceId) {
-    logger.error(`参数 ResourceId 为空，跳过任务`);
+async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCreateDomain) {
+  if (!domain) {
+    logger.error(`参数 Domain 为空，跳过任务`);
   }
   if (!zoneId) {
     logger.error(`参数 ZoneId 为空，跳过任务`);
@@ -165,16 +165,16 @@ async function singleTask(self, resourceId, zoneId, needConfigsKeys, report, nee
     const { Domains: [domainConfig] } = await self.API.cdnClient['DescribeDomainsConfig']({
       Filters: [
         {
-          'Name': 'resourceId',
+          'Name': 'domain',
           'Value': [
-            resourceId
+            domain
           ]
         }
       ]
     });
 
     if (!domainConfig) {
-      throw new Error(`ResourceId: ${resourceId} 对应的域名不存在，跳过任务`);
+      throw new Error(`Domain: ${domain} 对应的域名不存在，跳过任务`);
     }
 
     logger.success(`配置获取成功`);
@@ -326,9 +326,9 @@ async function singleTask(self, resourceId, zoneId, needConfigsKeys, report, nee
   }
 }
 
-async function singleScdnTask(self, resourceId, zoneId, needConfigsKeys, report) {
-  if (!resourceId) {
-    logger.error(`参数 ResourceId 为空，跳过任务`);
+async function singleScdnTask(self, domain, zoneId, needConfigsKeys, report) {
+  if (!domain) {
+    logger.error(`参数 Domain 为空，跳过任务`);
   }
   if (!zoneId) {
     logger.error(`参数 ZoneId 为空，跳过任务`);
@@ -339,16 +339,16 @@ async function singleScdnTask(self, resourceId, zoneId, needConfigsKeys, report)
     const { Domains: [domainConfig] } = await self.API.cdnClient['DescribeDomainsConfig']({
       Filters: [
         {
-          'Name': 'resourceId',
+          'Name': 'domain',
           'Value': [
-            resourceId
+            domain
           ]
         }
       ]
     });
 
     if (!domainConfig) {
-      throw new Error(`ResourceId: ${resourceId} 对应的域名不存在，跳过任务`);
+      throw new Error(`Domain: ${domain} 对应的域名不存在，跳过任务`);
     }
 
     logger.success(`配置获取成功`);
