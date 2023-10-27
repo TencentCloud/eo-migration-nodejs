@@ -1,6 +1,12 @@
-function ResponseHeader(domain, domainConfig) {
+function ResponseHeader(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.ResponseHeader;
   if (!keyConfig || !keyConfig.HeaderRules || !keyConfig.HeaderRules.length || keyConfig.Switch !== 'on') {
+    ruleTransferLog.push({
+      config: 'HTTP响应头配置(ResponseHeader)',
+      result: '未配置',
+      detail: ''
+    });
+
     return null;
   }
   const { HeaderRules } = keyConfig;
@@ -21,6 +27,11 @@ function ResponseHeader(domain, domainConfig) {
         'Values': [rule.HeaderValue]
       });
     };
+  });
+  ruleTransferLog.push({
+    config: 'HTTP响应头配置(ResponseHeader)',
+    result: '成功',
+    detail: ''
   });
 
   return {

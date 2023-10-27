@@ -1,6 +1,11 @@
-function ErrorPage(domain, domainConfig) {
+function ErrorPage(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.ErrorPage;
   if (!keyConfig || !keyConfig.PageRules || !keyConfig.PageRules.length || keyConfig.Switch !== 'on') {
+    ruleTransferLog.push({
+      config: '自定义错误页面配置(ErrorPage)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const { PageRules } = keyConfig;
@@ -9,6 +14,11 @@ function ErrorPage(domain, domainConfig) {
     return rule.RedirectCode !== 404;
   });
 
+  ruleTransferLog.push({
+    config: '自定义错误页面配置(ErrorPage)',
+    result: '成功',
+    detail: ''
+  });
   return {
     'CodeAction': {
       'Action': 'ErrorPage',

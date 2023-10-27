@@ -1,9 +1,19 @@
-function StatusCodeCache(domain, domainConfig) {
+function StatusCodeCache(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.StatusCodeCache;
   if (!keyConfig || !keyConfig.CacheRules || !keyConfig.CacheRules.length || keyConfig.Switch !== 'on') {
+    ruleTransferLog.push({
+      config: '状态码缓存配置(StatusCodeCache)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const { CacheRules } = keyConfig;
+  ruleTransferLog.push({
+    config: '状态码缓存配置(StatusCodeCache)',
+    result: '成功',
+    detail: ''
+  });
   return {
     'CodeAction': {
       'Action': 'StatusCodeCache',

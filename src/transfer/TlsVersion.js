@@ -1,8 +1,19 @@
-function TlsVersion(domain, domainConfig) {
+function TlsVersion(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.Https.TlsVersion;
   if (!keyConfig) {
+    ruleTransferLog.push({
+      config: 'TLS版本配置(Https.TlsVersion)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
+
+  ruleTransferLog.push({
+    config: 'TLS版本配置(Https.TlsVersion)',
+    result: '成功',
+    detail: ''
+  });
 
   return {
     'NormalAction': {

@@ -1,8 +1,13 @@
 const utils = require('../utils');
 
-function Cache(domain, domainConfig) {
+function Cache(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.Cache;
   if (!keyConfig || !keyConfig.RuleCache || !keyConfig.RuleCache.length) {
+    ruleTransferLog.push({
+      config: '节点缓存过期配置(Cache)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const { RuleCache } = keyConfig;
@@ -172,6 +177,12 @@ function Cache(domain, domainConfig) {
       });
     }
     eoRules.push(eoRule);
+  });
+
+  ruleTransferLog.push({
+    config: '节点缓存过期配置(Cache)',
+    result: '成功',
+    detail: ''
   });
 
   return {

@@ -1,4 +1,5 @@
 // 工具方法，包含对配置进行组装，判断优先级，条件去重，参数合法性校验等功能
+const _ = require('lodash');
 
 function testIp(value) {
   let $reg_is_ip = /^((([0-9]?[0-9])|(1[0-9]{2})|(2[0-4][0-9])|(25[0-5]))\.){3}(([0-9]?[0-9])|(1[0-9]{2})|(2[0-4][0-9])|(25[0-5]))$/;
@@ -196,6 +197,29 @@ function getTarget(type) {
   }
 }
 
+// 校验源站可否迁移，并返回端口号
+function validateOriginsPort(origins) {
+  const portList = [];
+  origins.forEach(origin => {
+    const [ipDomain, port, weight] = origin.split(':');
+    if (port) {
+      portList.push(port);
+    }
+  });
+
+  if (portList.length === 0) {
+    return [true, null];
+  } else if (portList.length > 0 && portList.length !== origins.length) {
+    return [false, '部分源站有端口配置，部分没有端口配置，无法迁移，必须全有（且端口一致）或全无'];
+  }
+
+  const uniqPortList = _.uniq(portList);
+  if (uniqPortList.length > 1) {
+    return [false, '源站端口配置不一致，无法迁移'];
+  }
+  return [true, uniqPortList[0]];
+}
+
 const utils = {
   testIp,
   testDomain,
@@ -206,7 +230,8 @@ const utils = {
   testDomainAndWeight,
   testDomainAndPortAndWeight,
   rulesGenerator,
-  getTarget
+  getTarget,
+  validateOriginsPort
 };
 
 module.exports = utils;

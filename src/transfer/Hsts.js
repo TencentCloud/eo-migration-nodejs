@@ -1,8 +1,19 @@
-function Hsts(domain, domainConfig) {
+function Hsts(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.Https.Hsts;
   if (!keyConfig || keyConfig.Switch === 'off') {
+    ruleTransferLog.push({
+      config: 'HSTS配置(Https.Hsts)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
+
+  ruleTransferLog.push({
+    config: 'HSTS配置(Https.Hsts)',
+    result: '成功',
+    detail: ''
+  });
 
   return {
     'NormalAction': {

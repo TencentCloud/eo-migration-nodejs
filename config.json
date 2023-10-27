@@ -3,11 +3,7 @@
   "SecretKey": "xxx",
   "List": [
     {
-      "Domains": [
-        "xxx",
-        "xxx",
-        "xxx"
-      ],
+      "Domains": ["xxx", "xxx", "xxx"],
       "ZoneId": "xxx"
     }
   ],

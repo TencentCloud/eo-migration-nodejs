@@ -1,8 +1,13 @@
 const utils = require('../utils');
 
-function UrlRedirect(domain, domainConfig) {
+function UrlRedirect(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.UrlRedirect;
   if (!keyConfig || !keyConfig.PathRules || !keyConfig.PathRules.length || keyConfig.Switch !== 'on') {
+    ruleTransferLog.push({
+      config: '回源URL重写配置(UrlRedirect)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const { PathRules } = keyConfig;
@@ -123,6 +128,12 @@ function UrlRedirect(domain, domainConfig) {
       });
     }
     eoRules.push(eoRule);
+  });
+
+  ruleTransferLog.push({
+    config: '回源URL重写配置(UrlRedirect)',
+    result: '成功',
+    detail: ''
   });
 
   return {

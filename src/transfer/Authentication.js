@@ -1,6 +1,11 @@
-function Authentication(domain, domainConfig) {
+function Authentication(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.Authentication;
   if (!keyConfig || keyConfig.Switch !== 'on') {
+    ruleTransferLog.push({
+      config: '鉴权配置(Authentication)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const type = keyConfig.TypeA ? 'TypeA' : keyConfig.TypeB ? 'TypeB' : keyConfig.TypeC ? 'TypeC' : 'TypeD';
@@ -60,6 +65,13 @@ function Authentication(domain, domainConfig) {
       'Values': [keyConfig[type].TimeFormat]
     });
   }
+
+  ruleTransferLog.push({
+    config: '鉴权配置(Authentication)',
+    result: '成功',
+    detail: ''
+  });
+
   return eoRule;
 }
 

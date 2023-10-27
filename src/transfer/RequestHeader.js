@@ -1,8 +1,13 @@
 const utils = require('../utils');
 
-function RequestHeader(domain, domainConfig) {
+function RequestHeader(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.RequestHeader;
   if (!keyConfig || !keyConfig.HeaderRules || !keyConfig.HeaderRules.length || keyConfig.Switch !== 'on') {
+    ruleTransferLog.push({
+      config: '回源HTTP请求头配置(RequestHeader)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const { HeaderRules } = keyConfig;
@@ -87,6 +92,12 @@ function RequestHeader(domain, domainConfig) {
     }
 
     eoRules.push(eoRule);
+  });
+
+  ruleTransferLog.push({
+    config: '回源HTTP请求头配置(RequestHeader)',
+    result: '成功',
+    detail: ''
   });
 
   return eoRules;

@@ -1,8 +1,13 @@
 const utils = require('../utils');
 
-function RangeOriginPull(domain, domainConfig) {
+function RangeOriginPull(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.RangeOriginPull;
   if (!keyConfig || !keyConfig.RangeRules || !keyConfig.RangeRules.length) {
+    ruleTransferLog.push({
+      config: 'Range 回源配置(RangeOriginPull)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
 
@@ -71,6 +76,11 @@ function RangeOriginPull(domain, domainConfig) {
         }
       }
     ]
+  });
+  ruleTransferLog.push({
+    config: 'Range 回源配置(RangeOriginPull)',
+    result: '成功',
+    detail: ''
   });
 
   return {

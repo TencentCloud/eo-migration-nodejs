@@ -1,8 +1,13 @@
 const utils = require('../utils');
 
-function MaxAge(domain, domainConfig) {
+function MaxAge(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.MaxAge;
   if (!keyConfig || !keyConfig.MaxAgeRules || !keyConfig.MaxAgeRules.length || keyConfig.Switch !== 'on') {
+    ruleTransferLog.push({
+      config: '浏览器缓存过期配置(MaxAge)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const { MaxAgeRules } = keyConfig;
@@ -62,6 +67,12 @@ function MaxAge(domain, domainConfig) {
       }
     });
     eoRules.push(eoRule);
+  });
+
+  ruleTransferLog.push({
+    config: '浏览器缓存过期配置(MaxAge)',
+    result: '成功',
+    detail: ''
   });
 
   return {

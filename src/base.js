@@ -3,11 +3,12 @@ const utils = require('./utils');
 const transfer = require('./transfer');
 const logger = require('./logger');
 const ObjectsToCsv = require('objects-to-csv');
+const Aegis = require('aegis-node-sdk');
 
 
 // 新版源站组接口未上线，暂时屏蔽后两个配置
-const defaultConfigs = ['IpFilter', 'StatusCodeCache', 'Compression', 'BandwidthAlert', 'RangeOriginPull', 'FollowRedirect', 'ErrorPage', 'RequestHeader', 'ResponseHeader', 'CacheKey', 'Cache', 'Authentication', 'ForceRedirect', 'Referer', 'MaxAge', 'UrlRedirect', 'UserAgentFilter', 'OfflineCache', 'PostMaxSize', 'Quic', 'WebSocket', 'OriginPullProtocol', /** PathBasedOrigin, PathRules */];
-const ruleConfigs = ['StatusCodeCache', 'Compression', 'RangeOriginPull', 'FollowRedirect', 'ErrorPage', 'RequestHeader', 'ResponseHeader', 'CacheKey', 'Cache', 'Authentication', 'MaxAge', 'UrlRedirect', 'OfflineCache', 'PostMaxSize', 'WebSocket', /** PathBasedOrigin, PathRules */];
+const defaultConfigs = ['IpFilter', 'StatusCodeCache', 'Compression', 'BandwidthAlert', 'RangeOriginPull', 'FollowRedirect', 'ErrorPage', 'RequestHeader', 'ResponseHeader', 'CacheKey', 'Cache', 'Authentication', 'ForceRedirect', 'Referer', 'MaxAge', 'UrlRedirect', 'UserAgentFilter', 'OfflineCache', 'PostMaxSize', 'Quic', 'WebSocket', 'PathBasedOrigin', 'PathRules'];
+const ruleConfigs = ['StatusCodeCache', 'Compression', 'RangeOriginPull', 'FollowRedirect', 'ErrorPage', 'RequestHeader', 'ResponseHeader', 'CacheKey', 'Cache', 'Authentication', 'MaxAge', 'UrlRedirect', 'OfflineCache', 'PostMaxSize', 'WebSocket', 'PathBasedOrigin', 'PathRules'];
 const otherConfigs = ['IpFilterRefererUserAgentFilter', 'BandwidthAlert'];
 
 const httpsConfigs = ['ForceRedirect', 'Quic', 'Http2', 'OcspStapling', 'Hsts', 'TlsVersion'];
@@ -23,6 +24,9 @@ const httpsConfigs = ['ForceRedirect', 'Quic', 'Http2', 'OcspStapling', 'Hsts', 
  */
 async function runTasks(options) {
   const reportDatas = [];
+  const aegis = new Aegis({
+    id: 'lJ7dDFybL1wqa79Po5', // 项目上报ID
+  });
 
   try {
     const self = this;
@@ -64,12 +68,37 @@ async function runTasks(options) {
       const report = {
         Domain: task.domain,
         ZoneId: task.zoneId,
-        Detail: ''
+        Details: []
       };
       logger.info(`开始任务，Domain: ${task.domain || null}, ZoneId: ${task.zoneId || null}`);
       const res = await singleTask(self, task.domain, task.zoneId, needConfigsKeys, report, needCreateDomain);
 
-      reportDatas.push(report);
+      try {
+        // 日志上报
+        aegis.info(report);
+      }
+      catch (e) {
+        logger.error(e);
+      }
+
+      report.Details.forEach(log => {
+        reportDatas.push({
+          '域名': report.Domain,
+          '站点ID': report.ZoneId,
+          '配置项': log.config,
+          '迁移结果': log.result,
+          '详情': log.detail,
+        });
+      });
+
+      // 一个域名空一行
+      reportDatas.push({
+        '域名': '',
+        '站点ID': '',
+        '配置项': '',
+        '迁移结果': '',
+        '详情': '',
+      });
     }
 
     logger.success(`所有任务迁移完成`);
@@ -133,7 +162,7 @@ async function runScdnTasks(options) {
       const report = {
         Domain: task.domain,
         ZoneId: task.zoneId,
-        Detail: ''
+        Details: []
       };
       logger.info(`开始任务，ResourceId: ${task.domain || null}, ZoneId: ${task.zoneId || null}`);
       const res = await singleScdnTask(self, task.domain, task.zoneId, needConfigsKeys, report);
@@ -155,9 +184,21 @@ async function runScdnTasks(options) {
 async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCreateDomain) {
   if (!domain) {
     logger.error(`参数 Domain 为空，跳过任务`);
+    report.Details.push({
+      config: '所有配置',
+      result: '失败',
+      detail: `参数 Domain 为空，跳过任务`
+    });
+    return;
   }
   if (!zoneId) {
     logger.error(`参数 ZoneId 为空，跳过任务`);
+    report.Details.push({
+      config: '所有配置',
+      result: '失败',
+      detail: `参数 ZoneId 为空，跳过任务`
+    });
+    return;
   }
 
   logger.info(`获取 CDN 域名配置...`);
@@ -182,64 +223,110 @@ async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCre
     // EO创建域名
     const domainName = domainConfig.Domain;
     const origins = domainConfig.Origin.Origins;
-    const OriginPullProtocol = domainConfig.Origin.OriginPullProtocol;
+    const originType = domainConfig.Origin.OriginType;
     let groupId = '';
-
-    if (origins.length > 1 || utils.testIpAndPort(origins[0]) || utils.testIpAndPortAndWeight(origins[0]) || utils.testDomainAndPort(origins[0]) || utils.testDomainAndPortAndWeight(origins[0])) {
-      // 因新版接口未上线，优先抛出异常
-      throw new Error(`暂时仅支持迁移源站为单IP或单域名，且没有配置端口跟权重的域名`);
-
-      let tempPort = undefined;
-      let flag = false;
-      origins.forEach((origin, index) => {
-        const [ipDomain, port, weight] = origin.split(':');
-        if (!tempPort && port && index === 0) {
-          tempPort = port;
-        }
-        if (tempPort !== port) {
-          flag = true;
-        }
-      });
-
-      if (flag) {
-        throw new Error(`源站为多IP或域名，但端口不一致，无法迁移`);
-      }
-
-      groupId = await createOriginGroup(self, {
-        zoneId,
-        origins: origins,
-        name: `CDN迁移EO-源站组-${domainName}`
-      });
-    }
+    let originPort = null;
 
     let originInfo = {
       HostHeader: domainConfig.Origin.ServerName
-      // OriginProtocol: domainConfig.Origin.OriginProtocol    // 新版接口才有，暂时屏蔽
     };
-    if (domainConfig.Origin.OriginType === 'cos') {
-      originInfo['OriginType'] = 'COS';
-      originInfo['PrivateAccess'] = domainConfig.Origin.CosPrivateAccess;
+    if (needCreateDomain) {
+      if (originType === 'cos') {
+        originInfo['OriginType'] = 'COS';
+        originInfo['PrivateAccess'] = domainConfig.Origin.CosPrivateAccess;
+        originInfo['Origin'] = origins[0];
+      }
+      else if (['domain', 'domainv6', 'ip', 'ipv6'].includes(originType)) {
+        if (origins.length > 1 || utils.testIpAndWeight(origins[0]) || utils.testIpAndPortAndWeight(origins[0]) || utils.testDomainAndWeight(origins[0]) || utils.testDomainAndPortAndWeight(origins[0])) {
+          const validResult = utils.validateOriginsPort(origins);
+
+          if (!validResult[0]) {
+            throw new Error(validResult[1]);
+          }
+          originPort = validResult[1];
+
+          groupId = await createOriginGroup(self, {
+            zoneId,
+            origins: origins,
+            name: `CDN迁移EO-源站组-${domainName}`
+          });
+          originInfo['OriginType'] = 'ORIGIN_GROUP';
+          originInfo['Origin'] = groupId;
+        }
+        else {
+          const [ip, port] = origins[0].split(':');
+          originInfo['OriginType'] = 'IP_DOMAIN';
+          originInfo['Origin'] = ip;
+          if (port) {
+            originPort = port;
+          }
+        }
+      }
+      else if (['third_party'].includes(originType) && domainConfig.Origin.OriginCompany === 'aws_s3') {
+        originInfo['OriginType'] = 'IP_DOMAIN';
+        originInfo['Origin'] = origins[0];
+        originInfo['PrivateAccess'] = domainConfig.AwsPrivateAccess && domainConfig.AwsPrivateAccess.Switch ? domainConfig.AwsPrivateAccess.Switch : 'off';
+        if (originInfo['PrivateAccess'] === 'off') {
+          originInfo['PrivateParameters'] = [
+            {
+              'Name': 'AccessKeyId',
+              'Value': ''
+            },
+            {
+              'Name': 'SecretAccessKey',
+              'Value': ''
+            },
+            {
+              'Name': 'SignatureVersion',
+              'Value': 'v4'
+            },
+            {
+              'Name': 'Region',
+              'Value': ''
+            }
+          ];
+        }
+        else {
+          originInfo['PrivateParameters'] = [
+            {
+              'Name': 'AccessKeyId',
+              'Value': domainConfig.AwsPrivateAccess.AccessKey
+            },
+            {
+              'Name': 'SecretAccessKey',
+              'Value': domainConfig.AwsPrivateAccess.SecretKey
+            },
+            {
+              'Name': 'SignatureVersion',
+              'Value': domainConfig.AwsPrivateAccess.Bucket
+            },
+            {
+              'Name': 'Region',
+              'Value': domainConfig.AwsPrivateAccess.Region
+            }
+          ];
+        }
+      }
+      else {
+        throw new Error(`暂不支持该源站类型的域名迁移`);
+      }
     }
-    else if (['domain', 'domainv6', 'ip', 'ipv6'].includes(domainConfig.Origin.OriginType)) {
-      originInfo['OriginType'] = 'IP_DOMAIN';
-    }
-    else {
-      throw new Error(`暂不支持该源站类型的域名迁移`);
-    }
-    originInfo['Origin'] = origins[0];
 
     if (needCreateDomain) {
       logger.info(`调用 CreateAccelerationDomain 创建 EO 域名...`);
-      logger.info(`参数: ${JSON.stringify({
+      const param = {
         ZoneId: zoneId,
         DomainName: domainName,
         OriginInfo: originInfo,
-      })}`);
-      const createAccelerationDomainRes = await self.API.eoClient['CreateAccelerationDomain']({
-        ZoneId: zoneId,
-        DomainName: domainName,
-        OriginInfo: originInfo,
-      });
+      };
+      if (domainConfig.Origin.OriginPullProtocol) {
+        param['OriginProtocol'] = domainConfig.Origin.OriginPullProtocol.toUpperCase();
+      }
+      if (originPort) {
+        param['HttpOriginPort'] = originPort;
+        param['HttpsOriginPort'] = originPort;
+      }
+      const createAccelerationDomainRes = await self.API.eoClient['CreateAccelerationDomain'](param);
 
       logger.success(`域名创建成功`);
     }
@@ -256,6 +343,11 @@ async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCre
       const now = new Date().getTime();
       if (expireTime > now) {
         logger.error('证书已过期，无法迁移 HTTPS 相关配置');
+        report.Details.push({
+          config: 'HTTPS配置(Https)',
+          result: '失败',
+          detail: '证书已过期，无法迁移 HTTPS 相关配置'
+        });
       }
       else {
         // 获取ssl 证书列表
@@ -281,10 +373,21 @@ async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCre
           ruleConfigKeys = [].concat(ruleConfigKeys, httpsConfigs);
         }
         catch (e) {
-          report.Detail = `${report.Detail}证书迁移失败: ${e.toString()}; `;
+          report.Details.push({
+            config: 'HTTPS配置(Https)',
+            result: '失败',
+            detail: `${e.toString()}`
+          });
           logger.error(e);
         }
       }
+    }
+    else {
+      report.Details.push({
+        config: 'HTTPS配置(Https)',
+        result: '未配置',
+        detail: ''
+      });
     }
 
     const cdnRuleConfigs = {};
@@ -294,12 +397,15 @@ async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCre
     logger.info(`迁移 CDN 配置到规则引擎...`);
     // CDN配置转成规则引擎配置
     if (ruleConfigKeys.length > 0) {
+      // 记录每个配置转成规则的日志
+      let ruleTransferLog = [];
       ruleConfigKeys.forEach(key => {
         cdnRuleConfigs[key] = domainConfig[key];
-        eoRuleConfigs[key] = transfer.ruleTransfer[key](domainName, domainConfig, report);
+        eoRuleConfigs[key] = transfer.ruleTransfer[key](domainName, domainConfig, ruleTransferLog);
       });
       // 规则引擎配置拼接
       const rules = utils.rulesGenerator(domainName, eoRuleConfigs);
+      logger.info(JSON.stringify(rules));
       // 创建规则
       try {
         const createRuleRes = await self.API.eoClient['CreateRule']({
@@ -308,11 +414,19 @@ async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCre
           Status: 'enable',
           Rules: rules,
         });
+
+        // 规则创建成功，则将日志写到报告里
+        report.Details = report.Details.concat(ruleTransferLog);
+        logger.success(`规则创建成功`);
+
       } catch (e) {
-        report.Detail = `${report.Detail}规则创建失败: ${e.toString()}; `;
+        report.Details.push({
+          config: '规则引擎相关配置',
+          result: '失败',
+          detail: `${e.toString()}`
+        });
         logger.error(e);
       }
-      logger.success(`规则创建成功`);
     }
     else {
       logger.warn(`无可迁移配置，跳过步骤`);
@@ -321,7 +435,11 @@ async function singleTask(self, domain, zoneId, needConfigsKeys, report, needCre
     logger.success(`${domainName} 迁移完成`);
   }
   catch (e) {
-    report.Detail = `域名迁移失败: ${e.toString()}`;
+    report.Details.push({
+      config: '所有配置',
+      result: '失败',
+      detail: `${e.toString()}`
+    });
     logger.error(e);
   }
 }
@@ -362,7 +480,7 @@ async function singleScdnTask(self, domain, zoneId, needConfigsKeys, report) {
       await transfer.otherTransfer['IpFilterRefererUserAgentFilter'](self, zoneId, domainName, domainConfig, report);
       logger.success(`迁移成功`);
     } catch (e) {
-      report.Detail = `${report.Detail}安全配置创建失败: ${e.toString()}; `;
+      report.Details = `${report.Details}安全配置创建失败: ${e.toString()}; `;
       logger.error(e);
     }
     // 创建IBandwidthAlert配置，CreateUsageCappingStrategy接口未更新到云API的SDK，暂时屏蔽
@@ -370,7 +488,7 @@ async function singleScdnTask(self, domain, zoneId, needConfigsKeys, report) {
     logger.success(`${domainName} 迁移完成`);
   }
   catch (e) {
-    report.Detail = `域名迁移失败: ${e.toString()}`;
+    report.Details = `域名迁移失败: ${e.toString()}`;
     logger.error(e);
   }
 }

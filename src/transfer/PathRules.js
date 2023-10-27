@@ -1,7 +1,12 @@
 
-function PathRules(domain, domainConfig) {
+function PathRules(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.Origin.PathRules;
   if (!keyConfig || !keyConfig.length) {
+    ruleTransferLog.push({
+      config: '回源路径重写规则配置(Origin.PathRules)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const eoRules = [];
@@ -15,7 +20,7 @@ function PathRules(domain, domainConfig) {
               'Operator': 'equal',
               'Target': rule.FullMatch ? 'full_url' : 'url',
               'IgnoreCase': false,
-              'Values': [rule.Path]
+              'Values': rule.FullMatch ? [`https://${domain}${rule.Path}`] : [rule.Path]
             }
           ]
         }
@@ -46,6 +51,12 @@ function PathRules(domain, domainConfig) {
         }
       ]
     });
+  });
+
+  ruleTransferLog.push({
+    config: '回源路径重写规则配置(Origin.PathRules)',
+    result: '成功',
+    detail: ''
   });
 
   return {

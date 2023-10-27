@@ -1,8 +1,13 @@
 const utils = require('../utils');
 
-function CacheKey(domain, domainConfig) {
+function CacheKey(domain, domainConfig, ruleTransferLog) {
   const keyConfig = domainConfig.CacheKey;
   if (!keyConfig) {
+    ruleTransferLog.push({
+      config: '缓存键规则配置(CacheKey)',
+      result: '未配置',
+      detail: ''
+    });
     return null;
   }
   const { KeyRules } = keyConfig;
@@ -127,6 +132,12 @@ function CacheKey(domain, domainConfig) {
     'Values': [keyConfig.IgnoreCase]
   });
   eoRules.push(allFileRule);
+
+  ruleTransferLog.push({
+    config: '缓存键规则配置(CacheKey)',
+    result: '成功',
+    detail: ''
+  });
 
   return {
     'Rules': eoRules,
